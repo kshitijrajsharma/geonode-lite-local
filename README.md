@@ -2,11 +2,6 @@
 
 A single `docker compose up` brings up a full [GeoNode](https://geonode.org/) on your laptop. No `.env` file, no nginx, no certificates. Just clone and run.
 
-## Installation
-
-- GeoNode web UI: **http://localhost:8000**
-- GeoServer admin: **http://localhost:8888/geoserver**
-- Login (both): **`admin`** / **`admin`**
 
 ## Requirements
 
@@ -15,15 +10,22 @@ A single `docker compose up` brings up a full [GeoNode](https://geonode.org/) on
 - **7 GB of free disk** for images and data
 - Ports **8000** and **8888** free
 
-## Start
+## Setup
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/kshitijrajsharma/geonode-lite-local.git
 cd geonode-lite-local
-docker compose up -d
+docker compose up
 ```
 
 First boot pulls images and runs migrations, fixtures, and admin creation. Give it **5 to 10 minutes**, then open http://localhost:8000.
+
+## Launch
+
+- GeoNode web UI: **http://localhost:8000**
+- GeoServer admin: **http://localhost:8888/geoserver**
+- Login (both): **`admin`** / **`admin`**
+
 
 To watch progress: `docker compose logs -f django`.
 
@@ -48,6 +50,27 @@ docker compose down -v   # remove containers AND data
 | `celery`       | `geonode/geonode:5.0.2`                 | 1 GB       |
 
 Idle usage is about 2 GB. Ceiling is 4.75 GB.
+
+## How this differs from the official GeoNode docker-compose
+
+**Services dropped:**
+
+| Service       | Role in the official setup                   | Why dropped here                                         |
+|---------------|----------------------------------------------|----------------------------------------------------------|
+| `geonode`     | Nginx reverse proxy + static file serving    | uWSGI serves statics directly via `--static-map`; ports exposed straight to the host |
+| `letsencrypt` | Auto-issues HTTPS certificates               | Local only, HTTP is enough                               |
+| `memcached`   | Optional cache layer                         | GeoNode already runs fine with `MEMCACHED_ENABLED=False` |
+
+**Services kept** (same images, leaner config): `db` (PostGIS), `redis`, `data-dir-conf`, `geoserver`, `django`, `celery`.
+
+**Other simplifications:**
+
+- No `.env` file or `create-envfile.py`. Every variable is inlined in `docker-compose.yml`.
+- No `build:` step. Uses the prebuilt `geonode/geonode:5.0.2` image.
+- `deploy.resources.limits.memory` set on every container.
+- GeoServer JVM heap reduced from `-Xmx4g` to `-Xmx1g`.
+- Celery worker concurrency reduced from 4 to 2.
+- Admin credentials, DB passwords, OAuth2 client id/secret all hardcoded.
 
 ## Troubleshooting
 
